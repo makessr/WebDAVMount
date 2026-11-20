@@ -29,4 +29,4 @@ docker run --rm --device /dev/fuse --cap-add SYS_ADMIN \
   bash /source/scripts/ci-debian-smoke.sh --fuse
 ```
 
-Docker 的默认 AppArmor 配置会拒绝容器内挂载。启用该配置的测试宿主可为上面的隔离容器加上 `--security-opt apparmor=unconfined`。托管 CI 仅在仓库主分支和仓库所有者发起的同仓库 PR 上启用该设置。
+Docker 的默认 AppArmor 配置会拒绝容器内挂载。启用该配置的测试宿主可为上面的隔离容器加上 `--security-opt apparmor=unconfined`。托管 CI 在 Ubuntu 虚拟机内以普通用户验证实际 FUSE 挂载，另在 Debian 容器验证安装和启动。
