@@ -16,3 +16,17 @@ Linux 预览通过 GitHub Releases 更新。Windows 安装包和在线更新使�
 ## 从源码构建
 
 在 Debian 上从仓库根目录运行 `python3 linux/package.py --output dist-linux`。依赖由 Debian 软件源提供。应用本身采用 Apache-2.0，署名见仓库根目录的 NOTICE。
+
+## 验收实际挂载
+
+在有 FUSE 的 Debian 环境安装候选包后，从仓库根目录以普通用户运行 `python3 linux/smoke_test.py`。测试使用本机临时 WebDAV 和 SFTP 服务，覆盖同时挂载、读取、只读写入拒绝、单独卸载、重新挂载及关闭窗口卸载。命令需要可用的 GTK 会话。
+
+使用 Docker 在隔离 Debian 中复测时，从仓库根目录运行以下命令。测试容器需要宿主提供 `/dev/fuse`。
+
+```bash
+docker run --rm --device /dev/fuse --cap-add SYS_ADMIN \
+  --mount "type=bind,source=$PWD,target=/source,readonly" debian:bookworm-slim \
+  bash /source/scripts/ci-debian-smoke.sh --fuse
+```
+
+Docker 的默认 AppArmor 配置会拒绝容器内挂载。启用该配置的测试宿主可为上面的隔离容器加上 `--security-opt apparmor=unconfined`。托管 CI 在 Ubuntu 虚拟机内以普通用户验证实际 FUSE 挂载，另在 Debian 容器验证安装和启动。

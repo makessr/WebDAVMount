@@ -83,11 +83,33 @@ jobs:
           path: ${{ runner.temp }}/debian-bookworm-archives/*.deb
           key: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('scripts/ci-debian-smoke.sh') }}-${{ steps.apt.outputs.week }}
           restore-keys: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('scripts/ci-debian-smoke.sh') }}-
-      - name: Debian package installation and GTK startup
+      - name: Verify the Debian GTK package
         run: |
           docker run --rm \
             -v "${RUNNER_TEMP}/debian-bookworm-archives:/var/cache/apt/archives" \
             -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh
+
+  linux-fuse:
+    name: Linux FUSE checks
+    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == github.repository_owner)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install the current package and FUSE test dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -c /dev/fuse
+          python3 linux/package.py --output "$RUNNER_TEMP/mountbridge-fuse"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends "$RUNNER_TEMP/mountbridge-fuse/"*.deb \
+            xfce4-terminal dbus-x11 xvfb xauth thunar desktop-file-utils
+      - name: Mount WebDAV and SFTP as a regular user
+        shell: bash
+        run: dbus-run-session -- xvfb-run -a env NO_AT_BRIDGE=1 /usr/bin/python3 linux/smoke_test.py
 
   contribution:
     name: Contribution checks
