@@ -1,5 +1,6 @@
-"""Exercise the installed GTK application and a real read-only WebDAV mount."""
+"""Exercise the installed GTK application, optionally with real FUSE mounts."""
 
+import argparse
 import errno
 import os
 from pathlib import Path
@@ -64,7 +65,7 @@ def loopback_port():
         return probe.getsockname()[1]
 
 
-def main():
+def main(startup_only):
     assert os.getuid() != 0
     with tempfile.TemporaryDirectory(prefix="mountbridge-smoke-") as temp:
         root = Path(temp)
@@ -97,6 +98,13 @@ def main():
             window = app.get_active_window()
             assert window.get_title() == "MountBridge · SALANGHE"
             await_condition(lambda: "挂载" in dict(buttons(window)))
+            if startup_only:
+                assert set(window.remotes) == {"Demo WebDAV", "SFTP"}
+                assert sum(label == "挂载" for label, _ in buttons(window)) == 2
+                window.close()
+                await_condition(lambda: not app.get_windows())
+                print("PASS: GTK startup and real WebDAV/SFTP configuration listing")
+                return
             click_mount(window)
             await_condition(lambda: "打开目录" in dict(buttons(window)))
             mounted = window.mounts.path("Demo WebDAV")
@@ -136,4 +144,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--startup-only", action="store_true")
+    main(parser.parse_args().startup_only)

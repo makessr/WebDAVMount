@@ -34,7 +34,7 @@ Windows 提交前运行 `bun run check`，Linux 运行 `bun run check:linux`。�
 
 GitHub Actions 分别执行 Windows、Linux 和贡献规范检查。main 合并前必须通过三项检查。
 
-Linux CI 记录隔离 WebDAV／SFTP 测试挂载的 rclone 错误，以便定位运行环境问题。
+Linux CI 验证 Debian 包安装、GTK 启动和读取 rclone 配置。Linux 发行前还需在支持 FUSE 的 Debian 环境实测挂载。
 
 ## 许可
 
