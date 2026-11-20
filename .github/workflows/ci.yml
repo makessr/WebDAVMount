@@ -19,9 +19,6 @@ jobs:
     name: Windows checks
     runs-on: windows-latest
     timeout-minutes: 20
-    env:
-      GOMODCACHE: ${{ runner.temp }}/wdm-go-modules
-      GOCACHE: ${{ runner.temp }}/wdm-go-build
     defaults:
       run:
         shell: pwsh
@@ -34,7 +31,7 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Read Go patch range
+      - name: Configure Go version and cache paths
         id: go
         run: |
           $source = Get-Content -Raw -LiteralPath go.mod
@@ -42,6 +39,8 @@ jobs:
             throw 'Missing Go version in go.mod'
           }
           "range=~$($Matches[1])" >> $env:GITHUB_OUTPUT
+          "GOMODCACHE=$(Join-Path $env:RUNNER_TEMP 'wdm-go-modules')" >> $env:GITHUB_ENV
+          "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'wdm-go-build')" >> $env:GITHUB_ENV
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         id: go-toolchain
         with:
