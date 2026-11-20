@@ -5,6 +5,8 @@ Debian／XFCE 桌面版通过 rclone 和 FUSE 将网盘挂载为只读目录。
 
 ## 安装与使用
 
+AMD64（x64）与 ARM64 共用同一个 `_all.deb` 安装包，APT 按本机架构安装 rclone 和 FUSE。
+
 1. 下载本项目的 `salanghe-mountbridge_0.1.0.preview1_all.deb`。在下载目录运行 `sudo apt install ./salanghe-mountbridge_0.1.0.preview1_all.deb`，由 apt 安装 rclone、FUSE 3 和 GTK 依赖。
 2. 用普通用户从 XFCE 应用菜单打开 **MountBridge**。点击「配置网盘」进入 rclone 交互配置，完成后回到软件点击「刷新」。已有 rclone 配置可直接读取。
 3. 点击「挂载」和「打开目录」，通过 Thunar 或系统默认文件管理器访问。关闭应用窗口会卸载由本应用管理的目录。卸载失败时请关闭正在使用挂载目录的程序。
@@ -29,4 +31,4 @@ docker run --rm --device /dev/fuse --cap-add SYS_ADMIN \
   bash /source/scripts/ci-debian-smoke.sh --fuse
 ```
 
-Docker 的默认 AppArmor 配置会拒绝容器内挂载。启用该配置的测试宿主可为上面的隔离容器加上 `--security-opt apparmor=unconfined`。托管 CI 在 Ubuntu 虚拟机内以普通用户验证实际 FUSE 挂载，另在 Debian 容器验证安装和启动。
+Docker 的默认 AppArmor 配置会拒绝容器内挂载。启用该配置的测试宿主可为上面的隔离容器加上 `--security-opt apparmor=unconfined`。托管 CI 在原生 AMD64 和 ARM64 的 Ubuntu 虚拟机内以普通用户验证实际 FUSE 挂载，另在 Debian 容器验证安装和启动。

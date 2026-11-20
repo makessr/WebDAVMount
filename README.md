@@ -51,7 +51,7 @@ Windows 提交前运行 `bun run check`，Linux 运行 `bun run check:linux`。�
 
 GitHub Actions 分别执行 Windows、Linux 和贡献规范检查。main 合并前必须通过三项检查。
 
-Linux CI 验证 Debian 包安装、GTK 启动和读取 rclone 配置。仓库主分支和仓库所有者发起的同仓库 PR 还在 Ubuntu 托管虚拟机中以普通用户验证 WebDAV、SFTP 的实际 FUSE 只读挂载和卸载。构建 Debian 包时，桌面启动器统一使用 Linux 换行。Debian 本机 FUSE 复测方法见 [Linux 说明](linux/README.md)。
+Linux CI 验证 Debian 包安装、GTK 启动和读取 rclone 配置。仓库主分支和仓库所有者发起的同仓库 PR 还在 AMD64 与 ARM64 的 Ubuntu 托管虚拟机中以普通用户验证 WebDAV、SFTP 的实际 FUSE 只读挂载和卸载。构建 Debian 包时，桌面启动器统一使用 Linux 换行。Debian 本机 FUSE 复测方法见 [Linux 说明](linux/README.md)。
 
 ## 许可
 

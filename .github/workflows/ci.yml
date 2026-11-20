@@ -90,23 +90,37 @@ jobs:
             -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh
 
   linux-fuse:
-    name: Linux FUSE checks
+    name: Linux FUSE checks (${{ matrix.arch }})
     if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == github.repository_owner)
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install the current package and FUSE test dependencies
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
         shell: bash
         run: |
           set -Eeuo pipefail
           test -c /dev/fuse
+          test "$(dpkg --print-architecture)" = "$EXPECTED_ARCH"
           python3 linux/package.py --output "$RUNNER_TEMP/mountbridge-fuse"
+          test "$(dpkg-deb -f "$RUNNER_TEMP/mountbridge-fuse/"*.deb Architecture)" = all
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends "$RUNNER_TEMP/mountbridge-fuse/"*.deb \
             xfce4-terminal dbus-x11 xvfb xauth thunar desktop-file-utils
+          test "$(dpkg-query -W -f='${Architecture}' rclone)" = "$EXPECTED_ARCH"
+          rclone version
       - name: Mount WebDAV and SFTP as a regular user
         shell: bash
         run: dbus-run-session -- xvfb-run -a env NO_AT_BRIDGE=1 /usr/bin/python3 linux/smoke_test.py
