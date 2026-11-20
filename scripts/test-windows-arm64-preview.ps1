@@ -51,7 +51,7 @@ function Wait-For([scriptblock]$Condition, [string]$Message) {
     throw $Message
 }
 
-function New-UpgradeSetup([string]$PortableRoot) {
+function Get-NsisCompiler {
     $nsis = Join-Path $root 'nsis.zip'
     $nsisPath = '/project/nsis/NSIS%203/3.13/nsis-3.13.zip'
     foreach ($mirror in @('netix.dl.sourceforge.net', 'master.dl.sourceforge.net')) {
@@ -64,22 +64,16 @@ function New-UpgradeSetup([string]$PortableRoot) {
         throw 'No NSIS mirror supplied the pinned compiler archive.'
     }
     Expand-Archive -LiteralPath $nsis -DestinationPath (Join-Path $root 'compiler')
-    $compiler = Join-Path $root 'compiler/nsis-3.13/makensis.exe'
-    $project = Split-Path $PSScriptRoot -Parent
-    $update = Join-Path $PortableRoot 'Update-WebDAVMount.ps1'
-    Copy-Item -LiteralPath (Join-Path $project 'build/portable/Update-WebDAVMount.ps1') -Destination $update
-    $manifest = Join-Path $PortableRoot 'SHA256SUMS.txt'
-    $hash = (Get-FileHash -LiteralPath $update -Algorithm SHA256).Hash.ToLowerInvariant()
-    $lines = @(Get-Content -LiteralPath $manifest)
-    $entry = '^[a-f0-9]{64}  Update-WebDAVMount\.ps1$'
-    if (@($lines | Where-Object { $_ -cmatch $entry }).Count -ne 1) { throw 'Cannot find updater entry in portable manifest.' }
-    $lines = $lines -creplace $entry, "$hash  Update-WebDAVMount.ps1"
-    [IO.File]::WriteAllLines($manifest, $lines, [Text.UTF8Encoding]::new($false))
-    $portable = Join-Path $root 'upgrade-portable.zip'
-    Compress-Archive -LiteralPath $PortableRoot -DestinationPath $portable
-    $output = Join-Path $root 'upgrade-setup.exe'
-    & (Join-Path $PSScriptRoot 'installer.ps1') -Version 0.72.7 -Architecture arm64 -PortableArchive $portable -Compiler $compiler -Output $output | Out-Host
-    return $output
+    return (Join-Path $root 'compiler/nsis-3.13/makensis.exe')
+}
+
+function Remove-TestInstallation([string]$Target, [string]$CopyName) {
+    $uninstaller = Join-Path $root $CopyName
+    Copy-Item -LiteralPath (Join-Path $Target 'uninstall.exe') -Destination $uninstaller
+    Start-CheckedProcess $uninstaller @('/S',("_?=$Target"))
+    if ((Test-Path -LiteralPath $registry) -or (Test-Path -LiteralPath (Join-Path $Target 'WebDAVMount.exe'))) {
+        throw 'ARM64 uninstall did not remove the program or registration.'
+    }
 }
 
 try {
@@ -99,6 +93,18 @@ try {
         $record.checks += 'missing-winfsp-detected-before-install'
     }
 
+    $compiler = Get-NsisCompiler
+    $candidate = & (Join-Path $PSScriptRoot 'build-windows-arm64-preview.ps1') -PreviewArchive $archive -Compiler $compiler -OutputDirectory (Join-Path $root 'candidate')
+    $record.installerSha256 = $candidate.InstallerSha256
+    $record.payloadManifestSha256 = $candidate.PayloadManifestSha256
+    $fresh = Join-Path $root 'ARM 全新安装'
+    Start-CheckedProcess $candidate.Setup @('/S',("/D=$fresh"))
+    if ((Get-ItemProperty -LiteralPath $registry).InstallLocation -ne $fresh) { throw 'Candidate installation registration mismatch.' }
+    $freshDeps = Get-DependencyReport (Join-Path $fresh 'WebDAVMount.exe') 'dependencies-fresh-candidate.json'
+    if (!$freshDeps.ready -or $freshDeps.version -ne '0.72.7') { throw 'Fresh candidate dependencies failed.' }
+    Remove-TestInstallation $fresh 'uninstall-fresh.exe'
+    $record.checks += 'candidate-clean-install-and-uninstall'
+
     $target = Join-Path $root 'ARM 安装'
     Start-CheckedProcess $setup @('/S',("/D=$target"))
     if ((Get-ItemProperty -LiteralPath $registry).InstallLocation -ne $target) { throw 'ARM64 installation registration mismatch.' }
@@ -107,6 +113,26 @@ try {
     $deps = Get-DependencyReport $exe 'dependencies-after.json'
     if (!$deps.ready -or $deps.version -ne '0.72.7') { throw 'Installed dependencies failed, see dependencies-after.json.' }
     $record.checks += 'native-install-registration-and-dependency-load'
+
+    $marker = Join-Path $target 'synthetic-user-file.txt'
+    [IO.File]::WriteAllText($marker, 'preserve')
+    try {
+        Start-CheckedProcess $candidate.Setup @('/S') -TimeoutSeconds 240
+    } catch {
+        $transaction = Get-ChildItem -LiteralPath $target -Directory -Force |
+            Where-Object { $_.Name -like '.webdavmount-update-stage-*' -or $_.Name -like 'WebDAVMount-upgrade-backup-*' }
+        $transaction | Select-Object Name, LastWriteTimeUtc | ConvertTo-Json -AsArray |
+            Set-Content -LiteralPath (Join-Path $root 'upgrade-progress.json')
+        throw
+    }
+    if ([IO.File]::ReadAllText($marker) -cne 'preserve') { throw 'Upgrade changed the extra file.' }
+    $afterUpgrade = Get-DependencyReport $exe 'dependencies-upgrade.json'
+    if (!$afterUpgrade.ready) { throw 'Dependencies failed after an in-place upgrade.' }
+    $installedManifest = Join-Path $target 'SHA256SUMS.txt'
+    if ((Get-FileHash -LiteralPath $installedManifest -Algorithm SHA256).Hash -ine $candidate.PayloadManifestSha256) {
+        throw 'Installed files did not receive the candidate manifest.'
+    }
+    $record.checks += 'public-preview-upgraded-with-current-source-preserved-extra-file'
 
     $files = Join-Path $root 'fixture'
     [IO.Directory]::CreateDirectory($files) | Out-Null
@@ -145,29 +171,8 @@ try {
     foreach ($child in $children) { if (!$child.HasExited) { $child.Kill(); $child.WaitForExit(5000) | Out-Null } }
     $record.checks += 'native-winfsp-read-write-refusal-and-unmount'
 
-    $marker = Join-Path $target 'synthetic-user-file.txt'
-    [IO.File]::WriteAllText($marker, 'preserve')
-    $upgradeSetup = New-UpgradeSetup (Split-Path $portable -Parent)
-    try {
-        Start-CheckedProcess $upgradeSetup @('/S') -TimeoutSeconds 240
-    } catch {
-        $transaction = Get-ChildItem -LiteralPath $target -Directory -Force |
-            Where-Object { $_.Name -like '.webdavmount-update-stage-*' -or $_.Name -like 'WebDAVMount-upgrade-backup-*' }
-        $transaction | Select-Object Name, LastWriteTimeUtc | ConvertTo-Json -AsArray |
-            Set-Content -LiteralPath (Join-Path $root 'upgrade-progress.json')
-        throw
-    }
-    if ([IO.File]::ReadAllText($marker) -cne 'preserve') { throw 'Upgrade changed the extra file.' }
-    $afterUpgrade = Get-DependencyReport $exe 'dependencies-upgrade.json'
-    if (!$afterUpgrade.ready) { throw 'Dependencies failed after an in-place upgrade.' }
-    $record.checks += 'public-preview-upgraded-with-current-source-preserved-extra-file'
-
-    $uninstaller = Join-Path $root 'uninstall-runner.exe'
-    Copy-Item -LiteralPath (Join-Path $target 'uninstall.exe') -Destination $uninstaller
-    Start-CheckedProcess $uninstaller @('/S',("_?=$target"))
-    if ((Test-Path -LiteralPath $registry) -or (Test-Path -LiteralPath $exe) -or [IO.File]::ReadAllText($marker) -cne 'preserve') {
-        throw 'ARM64 uninstall did not remove the program and preserve the extra file.'
-    }
+    Remove-TestInstallation $target 'uninstall-upgraded.exe'
+    if ([IO.File]::ReadAllText($marker) -cne 'preserve') { throw 'Uninstall changed the extra file.' }
     $record.checks += 'registered-uninstall-preserved-extra-file'
     $record.status = 'PASS'
 } catch {
