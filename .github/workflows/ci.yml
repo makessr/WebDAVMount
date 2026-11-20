@@ -19,6 +19,9 @@ jobs:
     name: Windows checks
     runs-on: windows-latest
     timeout-minutes: 20
+    env:
+      GOMODCACHE: ${{ runner.temp }}/wdm-go-modules
+      GOCACHE: ${{ runner.temp }}/wdm-go-build
     defaults:
       run:
         shell: pwsh
@@ -40,12 +43,22 @@ jobs:
           }
           "range=~$($Matches[1])" >> $env:GITHUB_OUTPUT
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        id: go-toolchain
         with:
           go-version: '${{ steps.go.outputs.range }}'
           check-latest: false
-          cache-dependency-path: |
-            go.mod
-            go.sum
+          cache: false
+      - name: Cache Go modules
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ${{ env.GOMODCACHE }}
+          key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: go-mod-${{ runner.os }}-${{ runner.arch }}-
+      - name: Cache Go build outputs
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ${{ env.GOCACHE }}
+          key: go-build-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-toolchain.outputs.go-version }}-${{ hashFiles('go.mod', 'go.sum') }}
       - run: npm run check
         env:
           npm_config_prefer_offline: 'true'

@@ -14,7 +14,7 @@
 
 根目录的 `main.go` 加载前端资源并启动 Windows 客户端，仍可从根目录运行 `go build .`。
 
-Windows CI 优先使用运行器已有的兼容 Go 补丁版本，并按依赖清单缓存 Go 与 npm。Debian CI 复用已下载的安装包，并在每次验收时刷新 APT 索引。
+Windows CI 优先使用运行器已有的兼容 Go 补丁版本。Go 模块和 npm 按依赖清单缓存，Go 编译缓存另按工具链版本区分。Debian CI 复用已下载的安装包，并在每次验收时刷新 APT 索引。
 
 
 Windows x64 多网盘挂载客户端。将 WebDAV、SFTP、FTP、S3 兼容存储及支持的网盘挂载为 Windows 盘符，再用资源管理器访问文件。
