@@ -10,7 +10,7 @@
 | [internal](internal) | Go 内部组件，包括挂载、配置与更新 |
 | [cmd](cmd) | 独立命令行工具 |
 | [build](build)、[scripts](scripts)、[.github/workflows](.github/workflows) | 安装模板、构建脚本和 CI |
-| [docs](docs) | 使用、验收与发行文档 |
+| [docs](docs/README.md) | 开发与验证说明 |
 
 根目录的 `main.go` 加载前端资源并启动 Windows 客户端，仍可从根目录运行 `go build .`。
 
