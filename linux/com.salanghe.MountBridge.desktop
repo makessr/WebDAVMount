@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=MountBridge
+GenericName=Network Drive Manager
+GenericName[zh_CN]=网盘挂载
+Comment=Mount rclone remotes as read-only folders
+Comment[zh_CN]=以只读模式挂载 rclone 网盘
+Exec=salanghe-mountbridge
+Icon=com.salanghe.MountBridge
+Terminal=false
+Categories=Utility;FileTools;

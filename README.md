@@ -2,6 +2,11 @@
 
 Windows x64 多网盘挂载客户端。将 WebDAV、SFTP、FTP、S3 兼容存储及支持的网盘挂载为 Windows 盘符，再用资源管理器访问文件。
 
+## Linux
+
+**MountBridge · SALANGHE** 是本项目的 Debian／XFCE 桌面版。它使用 rclone 和 FUSE，将网盘挂载为只读目录。参见 [Linux 安装与使用](linux/README.md) 和 [Linux 发行页](https://github.com/makessr/WebDAVMount/releases/tag/linux-v0.1.0-preview.1)。
+
+
 ## 安装
 
 1. 安装 [WinFsp](https://github.com/winfsp/winfsp/releases)。系统缺少 WebView2 时，安装 [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。
