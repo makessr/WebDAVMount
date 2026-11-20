@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+from unittest.mock import patch
 
 sys.path.insert(0, "/usr/lib/salanghe-mountbridge")
 from app import Application, GLib
@@ -43,6 +44,18 @@ def buttons(window):
 
 def click(window, label):
     next(widget for text, widget in buttons(window) if text == label).clicked()
+
+
+def click_mount(window):
+    launch = subprocess.Popen
+
+    def spawn(args, **kwargs):
+        if args[:2] == ["/usr/bin/rclone", "mount"]:
+            kwargs["stderr"] = None  # The fixture contains loopback configuration only.
+        return launch(args, **kwargs)
+
+    with patch("mounts.subprocess.Popen", side_effect=spawn):
+        click(window, "挂载")
 
 
 def loopback_port():
@@ -84,7 +97,7 @@ def main():
             window = app.get_active_window()
             assert window.get_title() == "MountBridge · SALANGHE"
             await_condition(lambda: "挂载" in dict(buttons(window)))
-            click(window, "挂载")
+            click_mount(window)
             await_condition(lambda: "打开目录" in dict(buttons(window)))
             mounted = window.mounts.path("Demo WebDAV")
             assert (mounted / "probe.txt").read_bytes() == b"MountBridge Linux\n"
@@ -97,13 +110,13 @@ def main():
             assert not (remote / "write.txt").exists()
             click(window, "打开目录")
             assert window.status.get_text() == ""
-            click(window, "挂载")
+            click_mount(window)
             await_condition(lambda: set(window.mounts.owned_from_system()) == {"Demo WebDAV", "SFTP"})
             assert (window.mounts.path("SFTP") / "probe.txt").read_bytes() == b"MountBridge Linux\n"
             click(window, "卸载")
             await_condition(lambda: "Demo WebDAV" not in window.mounts.children)
             assert set(window.mounts.owned_from_system()) == {"SFTP"}
-            click(window, "挂载")
+            click_mount(window)
             await_condition(lambda: set(window.mounts.owned_from_system()) == {"Demo WebDAV", "SFTP"})
             await_condition(lambda: not window.mounts.operations)
             window.close()

@@ -53,6 +53,7 @@ jobs:
               dpkg -i /tmp/preview/*.deb
               desktop-file-validate /usr/share/applications/com.salanghe.MountBridge.desktop
               useradd -m preview
+              ls -l /dev/fuse
               runuser -u preview -- dbus-run-session -- xvfb-run -a env NO_AT_BRIDGE=1 python3 /source/linux/smoke_test.py
             '
 

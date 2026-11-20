@@ -34,6 +34,8 @@ Windows 提交前运行 `bun run check`，Linux 运行 `bun run check:linux`。�
 
 GitHub Actions 分别执行 Windows、Linux 和贡献规范检查。main 合并前必须通过三项检查。
 
+Linux CI 记录隔离 WebDAV／SFTP 测试挂载的 rclone 错误，以便定位运行环境问题。
+
 ## 许可
 
 WebDAVMount 自有源码采用 [Apache-2.0](LICENSE)，署名见 [NOTICE](NOTICE)。第三方组件适用各自的[许可和署名](build/portable/THIRD_PARTY_NOTICES.txt)。
