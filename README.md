@@ -32,6 +32,8 @@ Windows x64 多网盘挂载客户端。将 WebDAV、SFTP、FTP、S3 兼容存储
 Windows 提交前运行 `bun run check`，Linux 运行 `bun run check:linux`。发行时用 `bun run release:check <标签>` 核对 main 的 CI。详细流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 
+GitHub Actions 分别执行 Windows、Linux 和贡献规范检查。main 合并前必须通过三项检查。
+
 ## 许可
 
 WebDAVMount 自有源码采用 [Apache-2.0](LICENSE)，署名见 [NOTICE](NOTICE)。第三方组件适用各自的[许可和署名](build/portable/THIRD_PARTY_NOTICES.txt)。
