@@ -94,6 +94,7 @@ class Mounts:
             raise
         self.operations = {}
         self.children = {}
+        self.interrupted = set()
         self.errors = {}
 
     def path(self, remote):
@@ -115,8 +116,12 @@ class Mounts:
     def refresh(self):
         active = self.owned_from_system()
         for remote, process in list(self.children.items()):
-            if process.poll() is not None:
+            code = process.poll()
+            if code is not None:
                 del self.children[remote]
+                # A dead FUSE daemon can leave a mounted but disconnected path.
+                if remote in active or (code != 0 and remote not in self.operations):
+                    self.interrupted.add(remote)
         for remote, op in list(self.operations.items()):
             code = op.process.poll()
             expired = time.monotonic() - op.started > 40
@@ -129,7 +134,9 @@ class Mounts:
                 del self.operations[remote]
                 if op.kind == "mount":
                     self.errors[remote] = "挂载失败，请检查连接、凭据及 FUSE。"
-                elif op.kind == "unmount" and (code != 0 or remote in active):
+                elif code == 0 and remote not in active:
+                    self.interrupted.discard(remote)
+                else:
                     self.errors[remote] = "卸载失败，请先关闭正在使用此目录的程序。"
             elif expired:
                 op.process.kill()
@@ -152,6 +159,7 @@ class Mounts:
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         self.errors.pop(remote, None)
+        self.interrupted.discard(remote)
         self.children[remote] = process
         self.operations[remote] = Operation(process, time.monotonic(), "mount")
 
