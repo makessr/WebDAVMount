@@ -1,5 +1,22 @@
 # WebDAVMount
 
+## 源码目录
+
+| 目录 | 内容 |
+| --- | --- |
+| [desktop/windows](desktop/windows) | Windows 挂载、托盘、连接管理和更新 |
+| [frontend](frontend) | Windows 客户端界面 |
+| [linux](linux) | Linux GTK 客户端与 Debian 打包 |
+| [internal](internal) | Go 内部组件，包括挂载、配置与更新 |
+| [cmd](cmd) | 独立命令行工具 |
+| [build](build)、[scripts](scripts)、[.github/workflows](.github/workflows) | 安装模板、构建脚本和 CI |
+| [docs](docs) | 使用、验收与发行文档 |
+
+根目录的 `main.go` 加载前端资源并启动 Windows 客户端，仍可从根目录运行 `go build .`。
+
+Windows CI 优先使用运行器已有的兼容 Go 补丁版本，并按依赖清单缓存 Go 与 npm。Debian CI 复用已下载的安装包，并在每次验收时刷新 APT 索引。
+
+
 Windows x64 多网盘挂载客户端。将 WebDAV、SFTP、FTP、S3 兼容存储及支持的网盘挂载为 Windows 盘符，再用资源管理器访问文件。
 
 ## Linux

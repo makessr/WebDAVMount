@@ -27,7 +27,7 @@ import {connectionDriveOptions,suggestDrive,saveConnectionFlow,fileSize} from '.
 type ConnectionProxy={mode:string,protocol?:string,host?:string,port?:number|string,username?:string,password?:string}
 type ObjectOptions={mode:string,region?:string,sessionToken?:string,tenant?:string,clientId?:string}
 type Profile={provider?:StorageProvider,hostKey?:string,id:string,name:string,url:string,user:string,password:string,drive:string,presetKey?:string,clearPassword?:boolean,autoMount?:boolean,group?:string,note?:string,proxy?:ConnectionProxy,storage?:ObjectOptions}
-const api=(name:string,...args:any[])=>WailsRuntime.Call.ByName('main.DesktopService.'+name,...args)
+const api=(name:string,...args:any[])=>WailsRuntime.Call.ByName('webdavmount/desktop/windows.DesktopService.'+name,...args)
 const groupOpen=ref(false)
 const connectionGroupsControl=ref<InstanceType<typeof ConnectionGroups>|null>(null)
 const mountPresets=ref<MountPreset[]>([]),presetReadError=ref('')

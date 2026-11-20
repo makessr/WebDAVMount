@@ -7,6 +7,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -27,10 +31,24 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Read Go patch range
+        id: go
+        run: |
+          $source = Get-Content -Raw -LiteralPath go.mod
+          if ($source -notmatch '(?m)^go (\d+\.\d+\.\d+)\s*$') {
+            throw 'Missing Go version in go.mod'
+          }
+          "range=~$($Matches[1])" >> $env:GITHUB_OUTPUT
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version-file: go.mod
+          go-version: '${{ steps.go.outputs.range }}'
+          check-latest: false
+          cache-dependency-path: |
+            go.mod
+            go.sum
       - run: npm run check
+        env:
+          npm_config_prefer_offline: 'true'
 
   linux:
     name: Linux checks
@@ -41,10 +59,24 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 scripts/check-linux.py
+      - name: Prepare Debian archive cache
+        id: apt
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/debian-bookworm-archives"
+          printf 'week=%s\n' "$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ${{ runner.temp }}/debian-bookworm-archives/*.deb
+          key: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('.github/workflows/ci.yml') }}-${{ steps.apt.outputs.week }}
+          restore-keys: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('.github/workflows/ci.yml') }}-
       - name: Debian package installation and GTK startup
         run: |
           docker run --rm \
+            -v "${RUNNER_TEMP}/debian-bookworm-archives:/var/cache/apt/archives" \
             -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim sh -euxc '
+              rm -f /etc/apt/apt.conf.d/docker-clean
               apt-get update -qq
               apt-get install -y -qq --no-install-recommends rclone fuse3 python3-gi gir1.2-gtk-3.0 \
                 xfce4-terminal dbus-x11 xvfb xauth thunar desktop-file-utils
