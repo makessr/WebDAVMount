@@ -24,9 +24,9 @@ function Get-VerifiedFile([string]$Url, [string]$Name, [string]$Hash) {
     return $destination
 }
 
-function Start-CheckedProcess([string]$Exe, [string[]]$Arguments, [int[]]$ExitCodes = @(0)) {
+function Start-CheckedProcess([string]$Exe, [string[]]$Arguments, [int[]]$ExitCodes = @(0), [int]$TimeoutSeconds = 90) {
     $child = Start-Process -FilePath $Exe -ArgumentList $Arguments -WindowStyle Hidden -PassThru
-    if (!$child.WaitForExit(90000)) { $child.Kill(); throw "Process timed out: $([IO.Path]::GetFileName($Exe))" }
+    if (!$child.WaitForExit($TimeoutSeconds * 1000)) { $child.Kill(); throw "Process timed out: $([IO.Path]::GetFileName($Exe))" }
     if ($child.ExitCode -notin $ExitCodes) { throw "Unexpected exit $($child.ExitCode): $([IO.Path]::GetFileName($Exe))" }
 }
 
@@ -148,7 +148,14 @@ try {
     $marker = Join-Path $target 'synthetic-user-file.txt'
     [IO.File]::WriteAllText($marker, 'preserve')
     $upgradeSetup = New-UpgradeSetup (Split-Path $portable -Parent)
-    Start-CheckedProcess $upgradeSetup @('/S')
+    try {
+        Start-CheckedProcess $upgradeSetup @('/S') -TimeoutSeconds 240
+    } catch {
+        $transaction = Get-ChildItem -LiteralPath $target -Directory -Force | Where-Object Name -Like '.webdavmount-upgrade-*'
+        $transaction | Select-Object Name, LastWriteTimeUtc | ConvertTo-Json -AsArray |
+            Set-Content -LiteralPath (Join-Path $root 'upgrade-progress.json')
+        throw
+    }
     if ([IO.File]::ReadAllText($marker) -cne 'preserve') { throw 'Upgrade changed the extra file.' }
     $afterUpgrade = Get-DependencyReport $exe 'dependencies-upgrade.json'
     if (!$afterUpgrade.ready) { throw 'Dependencies failed after an in-place upgrade.' }
