@@ -83,11 +83,22 @@ jobs:
           path: ${{ runner.temp }}/debian-bookworm-archives/*.deb
           key: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('scripts/ci-debian-smoke.sh') }}-${{ steps.apt.outputs.week }}
           restore-keys: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('scripts/ci-debian-smoke.sh') }}-
-      - name: Debian package installation and GTK startup
+      - name: Verify the Debian GTK package
+        env:
+          TRUSTED_FUSE: ${{ github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == github.repository_owner) }}
+        shell: bash
         run: |
-          docker run --rm \
+          set -Eeuo pipefail
+          docker_args=()
+          smoke_args=()
+          if [[ "$TRUSTED_FUSE" == true && "$RUNNER_ENVIRONMENT" == github-hosted ]]; then
+            test -c /dev/fuse
+            docker_args=(--device /dev/fuse --cap-add SYS_ADMIN)
+            smoke_args=(--fuse)
+          fi
+          docker run --rm "${docker_args[@]}" \
             -v "${RUNNER_TEMP}/debian-bookworm-archives:/var/cache/apt/archives" \
-            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh
+            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh "${smoke_args[@]}"
 
   contribution:
     name: Contribution checks

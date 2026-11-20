@@ -59,6 +59,17 @@ def click_mount(window):
         click(window, "挂载")
 
 
+def verify_read_only(mounted, source):
+    assert (mounted / "probe.txt").read_bytes() == (source / "probe.txt").read_bytes()
+    try:
+        (mounted / "write.txt").write_text("forbidden", encoding="utf-8")
+    except OSError as error:
+        assert error.errno in {errno.EROFS, errno.EACCES, errno.EPERM}
+    else:
+        raise AssertionError("read-only mount accepted a write")
+    assert not (source / "write.txt").exists()
+
+
 def loopback_port():
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
@@ -107,20 +118,12 @@ def main(startup_only):
                 return
             click_mount(window)
             await_condition(lambda: "打开目录" in dict(buttons(window)))
-            mounted = window.mounts.path("Demo WebDAV")
-            assert (mounted / "probe.txt").read_bytes() == b"MountBridge Linux\n"
-            try:
-                (mounted / "write.txt").write_text("forbidden", encoding="utf-8")
-            except OSError as error:
-                assert error.errno in {errno.EROFS, errno.EACCES, errno.EPERM}
-            else:
-                raise AssertionError("read-only mount accepted a write")
-            assert not (remote / "write.txt").exists()
+            verify_read_only(window.mounts.path("Demo WebDAV"), remote)
             click(window, "打开目录")
             assert window.status.get_text() == ""
             click_mount(window)
             await_condition(lambda: set(window.mounts.owned_from_system()) == {"Demo WebDAV", "SFTP"})
-            assert (window.mounts.path("SFTP") / "probe.txt").read_bytes() == b"MountBridge Linux\n"
+            verify_read_only(window.mounts.path("SFTP"), remote)
             click(window, "卸载")
             await_condition(lambda: "Demo WebDAV" not in window.mounts.children)
             assert set(window.mounts.owned_from_system()) == {"SFTP"}
