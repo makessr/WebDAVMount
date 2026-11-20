@@ -41,3 +41,6 @@ Linux CI 验证 Debian 包安装、GTK 启动和读取 rclone 配置。Linux 发
 WebDAVMount 自有源码采用 [Apache-2.0](LICENSE)，署名见 [NOTICE](NOTICE)。第三方组件适用各自的[许可和署名](build/portable/THIRD_PARTY_NOTICES.txt)。
 
 项目主页与联系入口见 [SALANGHE](https://www.salanghe.com/)。
+## Windows ARM64 原生验收
+
+Windows ARM64 预览提供独立的原生验收工作流，覆盖公开包校验、WinFsp 只读挂载和原位重装。
