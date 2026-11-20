@@ -113,7 +113,8 @@ class Window(Gtk.ApplicationWindow):
             self.closing = False
             self.status.set_text("仍有挂载在使用，请关闭相关程序后重试。")
         view = [
-            (remote, remote in active, pending[remote].kind if remote in pending else "", errors.get(remote, ""))
+            (remote, remote in active, remote in self.mounts.interrupted,
+             pending[remote].kind if remote in pending else "", errors.get(remote, ""))
             for remote in sorted(set(self.remotes) | set(active) | set(pending), key=str.casefold)
         ]
         if view == self.last_view:
@@ -121,16 +122,19 @@ class Window(Gtk.ApplicationWindow):
         self.last_view = view
         for row in self.rows.get_children():
             self.rows.remove(row)
-        for remote, mounted, operation, error in view:
+        for remote, mounted, interrupted, operation, error in view:
             line = Gtk.Box(spacing=8, margin=7)
             labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
             name = Gtk.Label(label=remote, xalign=0, ellipsize=Pango.EllipsizeMode.END)
             status = "正在挂载…" if operation == "mount" else "正在卸载…" if operation else "已挂载" if mounted else "未挂载"
+            if interrupted and not operation:
+                status = "挂载已中断，请卸载后重新挂载。" if mounted else "挂载已中断，可以重新挂载。"
             labels.pack_start(name, False, False, 0)
             labels.pack_start(Gtk.Label(label=error or status, xalign=0, wrap=True), False, False, 0)
             line.pack_start(labels, True, True, 0)
             if mounted and not operation:
-                self.button(line, "打开目录", self.open_clicked, remote)
+                if not interrupted:
+                    self.button(line, "打开目录", self.open_clicked, remote)
                 self.button(line, "卸载", self.run_action, self.mounts.unmount, remote)
             elif not operation:
                 self.button(line, "挂载", self.run_action, self.mounts.mount, remote)
@@ -140,7 +144,7 @@ class Window(Gtk.ApplicationWindow):
 
     def open_clicked(self, _button, remote):
         try:
-            if remote in self.mounts.owned_from_system():
+            if remote in self.mounts.refresh() and remote not in self.mounts.interrupted:
                 self.open_directory(remote)
         except (OSError, GLib.Error):
             self.status.set_text("无法打开文件管理器。")

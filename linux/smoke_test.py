@@ -36,15 +36,22 @@ def files_ready(url):
         return False
 
 
-def buttons(window):
+def row_contents(window, remote=None):
     for row in window.rows.get_children():
-        for widget in row.get_child().get_children():
-            if hasattr(widget, "get_label"):
-                yield widget.get_label(), widget
+        labels, *actions = row.get_child().get_children()
+        name, status = labels.get_children()
+        if remote is None or name.get_text() == remote:
+            yield status.get_text(), actions
 
 
-def click(window, label):
-    next(widget for text, widget in buttons(window) if text == label).clicked()
+def buttons(window, remote=None):
+    for _, actions in row_contents(window, remote):
+        for button in actions:
+            yield button.get_label(), button
+
+
+def click(window, label, remote=None):
+    next(widget for text, widget in buttons(window, remote) if text == label).clicked()
 
 
 def click_mount(window):
@@ -130,6 +137,25 @@ def main(startup_only):
             click_mount(window)
             await_condition(lambda: set(window.mounts.owned_from_system()) == {"Demo WebDAV", "SFTP"})
             await_condition(lambda: not window.mounts.operations)
+
+            # Simulate an engine crash after both mounts have become active.
+            crashed = window.mounts.children["Demo WebDAV"]
+            crashed.kill()
+            assert crashed.wait(timeout=5) < 0
+            assert "Demo WebDAV" in window.mounts.owned_from_system()
+            window.refresh()
+            status, _ = next(row_contents(window, "Demo WebDAV"))
+            assert "挂载已中断" in status, f"Unexpected status after engine crash: {status}"
+            assert set(dict(buttons(window, "Demo WebDAV"))) == {"卸载"}
+            verify_read_only(window.mounts.path("SFTP"), remote)
+
+            click(window, "卸载", "Demo WebDAV")
+            await_condition(lambda: "挂载" in dict(buttons(window, "Demo WebDAV")))
+            assert set(window.mounts.owned_from_system()) == {"SFTP"}
+            click_mount(window)
+            await_condition(lambda: "打开目录" in dict(buttons(window, "Demo WebDAV")))
+            verify_read_only(window.mounts.path("Demo WebDAV"), remote)
+            print("PASS: interrupted engine is shown, safely unmounted and mounted again")
             window.close()
             await_condition(lambda: not window.mounts.owned_from_system() and not app.get_windows())
             assert not window.mounts.children
@@ -140,6 +166,11 @@ def main(startup_only):
                     if process.poll() is None:
                         process.terminate()
                         process.wait(timeout=5)
+                for name in window.mounts.owned_from_system():
+                    subprocess.run(
+                        ["/usr/bin/fusermount3", "-u", "--", str(window.mounts.path(name))],
+                        check=True, timeout=5,
+                    )
             server.terminate()
             server.wait(timeout=5)
             sftp.terminate()
