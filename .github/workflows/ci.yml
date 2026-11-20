@@ -95,10 +95,20 @@ jobs:
             test -c /dev/fuse
             docker_args=(--device /dev/fuse --cap-add SYS_ADMIN)
             smoke_args=(--fuse)
+            docker info --format '{{json .SecurityOptions}}'
           fi
-          docker run --rm "${docker_args[@]}" \
+          if docker run --rm "${docker_args[@]}" \
             -v "${RUNNER_TEMP}/debian-bookworm-archives:/var/cache/apt/archives" \
-            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh "${smoke_args[@]}"
+            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh "${smoke_args[@]}"; then
+            exit 0
+          else
+            status=$?
+          fi
+          if [[ ${#smoke_args[@]} -gt 0 ]]; then
+            sudo journalctl -k --since '-5 minutes' --no-pager |
+              grep -E 'apparmor="DENIED".*(fusermount|fstype="fuse)' || true
+          fi
+          exit "$status"
 
   contribution:
     name: Contribution checks

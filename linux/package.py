@@ -44,8 +44,8 @@ Description: MountBridge by SALANGHE for Debian and XFCE
             place(stage, f"usr/lib/{PACKAGE}/{name}", source=ROOT / "linux/mountbridge" / name)
         place(stage, f"usr/bin/{PACKAGE}", mode=0o755,
               content=f'#!/bin/sh\nexec /usr/bin/python3 /usr/lib/{PACKAGE}/app.py "$@"\n')
-        place(stage, "usr/share/applications/com.salanghe.MountBridge.desktop",
-              source=ROOT / "linux/com.salanghe.MountBridge.desktop")
+        desktop_entry = (ROOT / "linux/com.salanghe.MountBridge.desktop").read_text(encoding="utf-8")
+        place(stage, "usr/share/applications/com.salanghe.MountBridge.desktop", content=desktop_entry)
         place(stage, "usr/share/pixmaps/com.salanghe.MountBridge.png",
               source=ROOT / "internal/branding/logo.png")
         for name in ("LICENSE", "NOTICE"):
