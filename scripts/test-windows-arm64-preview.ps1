@@ -52,7 +52,7 @@ function Wait-For([scriptblock]$Condition, [string]$Message) {
 }
 
 function New-UpgradeSetup([string]$PortableRoot) {
-    $nsis = Get-VerifiedFile 'https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13.zip' 'nsis.zip' 'ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8'
+    $nsis = Get-VerifiedFile 'https://master.dl.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13.zip?viasf=1' 'nsis.zip' 'ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8'
     Expand-Archive -LiteralPath $nsis -DestinationPath (Join-Path $root 'compiler')
     $compiler = Join-Path $root 'compiler/nsis-3.13/makensis.exe'
     $project = Split-Path $PSScriptRoot -Parent
