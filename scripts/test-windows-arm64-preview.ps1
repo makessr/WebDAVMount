@@ -151,7 +151,8 @@ try {
     try {
         Start-CheckedProcess $upgradeSetup @('/S') -TimeoutSeconds 240
     } catch {
-        $transaction = Get-ChildItem -LiteralPath $target -Directory -Force | Where-Object Name -Like '.webdavmount-upgrade-*'
+        $transaction = Get-ChildItem -LiteralPath $target -Directory -Force |
+            Where-Object { $_.Name -like '.webdavmount-update-stage-*' -or $_.Name -like 'WebDAVMount-upgrade-backup-*' }
         $transaction | Select-Object Name, LastWriteTimeUtc | ConvertTo-Json -AsArray |
             Set-Content -LiteralPath (Join-Path $root 'upgrade-progress.json')
         throw

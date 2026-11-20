@@ -2,7 +2,7 @@
   "name": "webdavmount-workspace",
   "private": true,
   "scripts": {
-    "check": "npm --prefix frontend ci && npm --prefix frontend test && npm --prefix frontend run build && go test . ./cmd/... ./internal/... && go vet . ./cmd/... ./internal/...",
+    "check": "npm --prefix frontend ci && npm --prefix frontend test && npm --prefix frontend run build && go test . ./desktop/windows ./cmd/... ./internal/... && go vet . ./desktop/windows ./cmd/... ./internal/...",
     "check:linux": "python3 scripts/check-linux.py",
     "release:check": "node scripts/check-release.mjs"
   }
