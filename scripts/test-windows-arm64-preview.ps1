@@ -52,7 +52,17 @@ function Wait-For([scriptblock]$Condition, [string]$Message) {
 }
 
 function New-UpgradeSetup([string]$PortableRoot) {
-    $nsis = Get-VerifiedFile 'https://master.dl.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13.zip?viasf=1' 'nsis.zip' 'ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8'
+    $nsis = Join-Path $root 'nsis.zip'
+    $nsisPath = '/project/nsis/NSIS%203/3.13/nsis-3.13.zip'
+    foreach ($mirror in @('netix.dl.sourceforge.net', 'master.dl.sourceforge.net')) {
+        curl.exe --location --fail --silent --show-error --max-time 25 --output $nsis "https://$mirror${nsisPath}?viasf=1"
+        if ($LASTEXITCODE -eq 0 -and (Get-FileHash -LiteralPath $nsis -Algorithm SHA256).Hash -ieq 'ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8') {
+            break
+        }
+    }
+    if (!(Test-Path -LiteralPath $nsis) -or (Get-FileHash -LiteralPath $nsis -Algorithm SHA256).Hash -ine 'ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8') {
+        throw 'No NSIS mirror supplied the pinned compiler archive.'
+    }
     Expand-Archive -LiteralPath $nsis -DestinationPath (Join-Path $root 'compiler')
     $compiler = Join-Path $root 'compiler/nsis-3.13/makensis.exe'
     $project = Split-Path $PSScriptRoot -Parent
