@@ -20,6 +20,9 @@ OutFile "${OUTPUT}"
 InstallDir "$LOCALAPPDATA\Programs\${APP_ENTRY}"
 RequestExecutionLevel user
 SetCompressor zlib
+!ifdef REPRODUCIBLE_FILES
+ SetDateSave off
+!endif
 ShowInstDetails show
 ShowUninstDetails show
 !macro ShortcutPaths

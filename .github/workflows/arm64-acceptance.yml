@@ -7,6 +7,10 @@ on:
     paths:
       - .github/workflows/arm64-acceptance.yml
       - scripts/test-windows-arm64-preview.ps1
+      - scripts/build-windows-arm64-preview.ps1
+      - scripts/installer.ps1
+      - build/windows/**
+      - build/portable/Update-WebDAVMount.ps1
 
 permissions:
   contents: read
@@ -23,7 +27,13 @@ jobs:
           persist-credentials: false
       - name: Verify native dependencies, mount, upgrade and uninstall
         shell: pwsh
-        run: ./scripts/test-windows-arm64-preview.ps1 -OutputDirectory "${{ runner.temp }}/wdm-arm64-evidence"
+        run: |
+          $sourceArchive = Join-Path $env:RUNNER_TEMP 'wdm-arm64-source.zip'
+          $source = Join-Path $env:RUNNER_TEMP 'wdm-arm64-source'
+          git archive --format=zip -o $sourceArchive HEAD -- scripts/test-windows-arm64-preview.ps1 scripts/build-windows-arm64-preview.ps1 scripts/installer.ps1 build/windows build/portable
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot export installer build inputs.' }
+          Expand-Archive -LiteralPath $sourceArchive -DestinationPath $source
+          & (Join-Path $source 'scripts/test-windows-arm64-preview.ps1') -OutputDirectory (Join-Path $env:RUNNER_TEMP 'wdm-arm64-evidence')
       - name: Upload acceptance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

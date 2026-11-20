@@ -20,7 +20,9 @@ $machine=if($Architecture -ceq 'arm64'){0xAA64}else{0x8664}
 foreach($name in @('WebDAVMount.exe','rclone.exe')){
  if((Get-UpgradePEMachine (Get-UpgradePath $payload $name)) -ne $machine){throw "Package architecture mismatch: $name"}
 }
-$entries=@($manifest.Files.Keys|Sort-Object)+@('SHA256SUMS.txt','licenses/NSIS/COPYING','安装与卸载.txt')
+[string[]]$entries=$manifest.Files.Keys
+[Array]::Sort($entries,[StringComparer]::Ordinal)
+$entries=$entries+@('SHA256SUMS.txt','licenses/NSIS/COPYING','安装与卸载.txt')
 $license=Join-Path (Split-Path $Compiler -Parent) 'COPYING'
 function Escape-Nsis([string]$Value){return $Value.Replace('$','$$').Replace('"','$\"')}
 $install=@();$remove=@();$checks=@();$parents=@{}
@@ -37,7 +39,9 @@ foreach($entry in $entries){
  $remove+='ClearErrors';$remove+='Delete "$INSTDIR\'+(Escape-Nsis $relative)+'"';$remove+='IfErrors 0 +2';$remove+='Call un.DeleteError'
  while($parent){$parents[$parent]=$true;$parent=[IO.Path]::GetDirectoryName($parent)}
 }
-foreach($parent in @($parents.Keys|Sort-Object Length -Descending)){$remove+='RMDir "$INSTDIR\'+(Escape-Nsis $parent)+'"'}
+[string[]]$parentPaths=$parents.Keys
+[Array]::Sort($parentPaths,[StringComparer]::Ordinal)
+foreach($parent in @($parentPaths|Sort-Object Length -Descending -Stable)){$remove+='RMDir "$INSTDIR\'+(Escape-Nsis $parent)+'"'}
 $files=Join-Path $work 'files.nsh';$deletes=Join-Path $work 'deletes.nsh';$validation=Join-Path $work 'checks.nsh'
 [IO.File]::WriteAllLines($files,$install,[Text.UTF8Encoding]::new($true))
 [IO.File]::WriteAllLines($deletes,$remove,[Text.UTF8Encoding]::new($true))
@@ -50,6 +54,7 @@ $Output=[IO.Path]::GetFullPath($Output)
 if(Test-Path -LiteralPath $Output){throw 'Installer output already exists'}
 $arguments=@('/V2',"/DVERSION=$Version","/DOUTPUT=$Output","/DFILE_LIST=$files","/DDELETE_LIST=$deletes","/DUNINSTALL_CHECKS=$validation")
 if($Architecture -ceq 'arm64'){$arguments+='/DARM64_PACKAGE'}
+if($env:SOURCE_DATE_EPOCH -match '^\d+$'){$arguments+='/DREPRODUCIBLE_FILES'}
 if($TestKey){$arguments+="/DTEST_KEY=$TestKey"}
 if($TestInterruptAfterRegistration){
  $original=[IO.File]::ReadAllText((Join-Path $project 'build/windows/Upgrade-Installed.ps1'))
