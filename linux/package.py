@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 
 
-VERSION = "0.1.0~preview1"
+VERSION = "0.1.0~preview2"
 PACKAGE = "salanghe-mountbridge"
 ROOT = Path(__file__).resolve().parent.parent
 
