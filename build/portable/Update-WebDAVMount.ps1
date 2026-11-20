@@ -38,6 +38,23 @@ function Test-UpgradeOwnedName([string]$Name){
     return $Name -cmatch '^licenses/[A-Za-z0-9_.-]+/(?:LICENSE|LICENCE|COPYING|NOTICE|PATENTS|THIRD-PARTY-LICENSES?)(?:[._-][A-Za-z0-9_.-]+)?$' -and $Name -notmatch '(^|/)\.{1,2}(/|$)'
 }
 function Get-UpgradeHash([string]$Path){return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()}
+function Get-UpgradePEMachine([string]$Path){
+    $reader=[IO.BinaryReader]::new([IO.File]::OpenRead($Path))
+    try{
+        if($reader.BaseStream.Length -lt 64 -or $reader.ReadUInt16() -ne 0x5A4D){return 0}
+        $reader.BaseStream.Position=60
+        $offset=$reader.ReadUInt32()
+        if($offset -lt 64 -or $offset -gt ($reader.BaseStream.Length-6)){return 0}
+        $reader.BaseStream.Position=$offset
+        if($reader.ReadUInt32() -ne 0x4550){return 0}
+        return $reader.ReadUInt16()
+    }finally{$reader.Dispose()}
+}
+function Test-UpgradeRegistryKey([string]$Key){
+    return $Key -in @('Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount',
+        'Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount-ARM64') -or
+        $Key -match '^Software\\WebDAVMount\\Tests\\Installer-[a-f0-9]{32}$'
+}
 function Read-UpgradeManifest([string]$Root,[bool]$NewPackage){
     $manifest=Get-UpgradePath $Root 'SHA256SUMS.txt'
     $bytes=[IO.File]::ReadAllBytes($manifest)
@@ -148,7 +165,7 @@ function Restore-PendingUpgradeLocked([string]$Root,[switch]$ValidateOnly){
     try{
         if($record.registration){
             $r=$record.registration
-            if(($r.key -ne 'Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount' -and $r.key -notmatch '^Software\\WebDAVMount\\Tests\\Installer-[a-f0-9]{32}$') -or $r.oldVersion -notmatch '^\d+\.\d+\.\d+$' -or $r.newVersion -notmatch '^\d+\.\d+\.\d+$' -or [version]$r.oldVersion -gt [version]$r.newVersion){throw 'Recovery registration invalid.'}
+            if(!(Test-UpgradeRegistryKey $r.key) -or $r.oldVersion -notmatch '^\d+\.\d+\.\d+$' -or $r.newVersion -notmatch '^\d+\.\d+\.\d+$' -or [version]$r.oldVersion -gt [version]$r.newVersion){throw 'Recovery registration invalid.'}
             $base=[Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,[Microsoft.Win32.RegistryView]::Registry64);$key=$base.OpenSubKey($r.key,$true)
             if(!$key -or !([string]$key.GetValue('InstallLocation')).Equals($Root,[StringComparison]::OrdinalIgnoreCase) -or $key.GetValue('DisplayVersion') -notin @($r.oldVersion,$r.newVersion)){throw 'Recovery registration changed externally.'}
             $registration=@{key=$r.key;oldVersion=$r.oldVersion;newVersion=$r.newVersion}
@@ -314,7 +331,7 @@ function Invoke-WebDAVMountUpdate {
             }
             if($Registration){
                 $r=$Registration
-                if(($r.key -ne 'Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount' -and $r.key -notmatch '^Software\\WebDAVMount\\Tests\\Installer-[a-f0-9]{32}$') -or $r.oldVersion -notmatch '^\d+\.\d+\.\d+$' -or $r.newVersion -notmatch '^\d+\.\d+\.\d+$'){throw 'Rollback registration invalid.'}
+                if(!(Test-UpgradeRegistryKey $r.key) -or $r.oldVersion -notmatch '^\d+\.\d+\.\d+$' -or $r.newVersion -notmatch '^\d+\.\d+\.\d+$'){throw 'Rollback registration invalid.'}
                 $registryBase=[Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,[Microsoft.Win32.RegistryView]::Registry64)
                 $registryEntry=$null
                 try{

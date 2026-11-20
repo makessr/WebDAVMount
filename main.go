@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sys/windows"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"unsafe"
 	"webdavmount/internal/branding"
@@ -22,6 +23,9 @@ var assets embed.FS
 func main() {
 	dir, _ := os.UserConfigDir()
 	defaultDir := filepath.Join(dir, "WebDAVMount")
+	if runtime.GOARCH == "arm64" {
+		defaultDir = filepath.Join(dir, "WebDAVMount-ARM64")
+	}
 	dataDir := flag.String("data-dir", defaultDir, "独立数据目录（用于隔离验证）")
 	checkOnly := flag.Bool("check-dependencies", false, "仅检查依赖，不打开窗口或读取账号")
 	reportPath := flag.String("report", "", "依赖检查报告保存位置（新文件）")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"debug/pe"
 	"errors"
 	"github.com/wailsapp/go-webview2/webviewloader"
 	"golang.org/x/sys/windows"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -31,6 +33,19 @@ func probeRclone(path string) (string, error) {
 	if st, e := os.Stat(path); e != nil || st.IsDir() {
 		return "", errors.New("缺少同目录的rclone.exe；请完整解压便携包，不要只复制主程序")
 	}
+	if file, err := pe.Open(path); err != nil {
+		return "", errors.New("无法识别 rclone.exe，请重新解压随包版本")
+	} else {
+		machine := file.FileHeader.Machine
+		file.Close()
+		expected := uint16(pe.IMAGE_FILE_MACHINE_AMD64)
+		if runtime.GOARCH == "arm64" {
+			expected = pe.IMAGE_FILE_MACHINE_ARM64
+		}
+		if machine != expected {
+			return "", errors.New("rclone.exe 的架构与客户端不匹配，请使用随包版本")
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, path, "version", "--config", "")
@@ -42,7 +57,7 @@ func probeRclone(path string) (string, error) {
 	}
 	data, e := cmd.Output()
 	if e != nil {
-		return "", errors.New("rclone.exe无法运行，请使用便携包内的Windows x64版本")
+		return "", errors.New("rclone.exe 无法运行，请使用同一便携包内的引擎")
 	}
 	text := string(data)
 	if !strings.HasPrefix(text, "rclone v") || !strings.Contains(text, "cmount") {
@@ -51,6 +66,11 @@ func probeRclone(path string) (string, error) {
 	return strings.TrimSpace(strings.SplitN(text, "\n", 2)[0]), nil
 }
 func probeWinFsp() (string, error) {
+	component := "x64"
+	suffix := "x64"
+	if runtime.GOARCH == "arm64" {
+		component, suffix = "ARM64", "a64"
+	}
 	for _, view := range []uint32{registry.WOW64_32KEY, registry.WOW64_64KEY} {
 		key, e := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\WinFsp`, registry.QUERY_VALUE|view)
 		if e != nil {
@@ -61,14 +81,14 @@ func probeWinFsp() (string, error) {
 		if e != nil {
 			continue
 		}
-		dll := filepath.Join(root, "bin", "winfsp-x64.dll")
+		dll := filepath.Join(root, "bin", "winfsp-"+suffix+".dll")
 		handle, e := windows.LoadLibraryEx(dll, 0, windows.LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|windows.LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
 		if e == nil {
 			windows.FreeLibrary(handle)
-			return "已检测到可加载的x64组件", nil
+			return "已检测到可加载的 " + component + " 组件", nil
 		}
 	}
-	return "", errors.New("未检测到可用WinFsp x64组件；请安装WinFsp后重新打开程序")
+	return "", errors.New("未检测到可用 WinFsp " + component + " 组件，请安装 WinFsp 后重新打开程序")
 }
 func probeWebView() (string, error) {
 	version, e := webviewloader.GetAvailableCoreWebView2BrowserVersionString("")

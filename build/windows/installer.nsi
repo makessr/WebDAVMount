@@ -6,28 +6,36 @@
 Var UpgradeMode
 Var RegisteredDirectory
 Var PayloadDirectory
-Name "WebDAVMount ${VERSION}"
+!ifdef ARM64_PACKAGE
+ !define APP_ENTRY "WebDAVMount-ARM64"
+ !define APP_DISPLAY "WebDAVMount ARM64"
+ !define PRODUCT_ID "WebDAVMount-ARM64-8AC56D6F-43A6-4E37-A0D0-36DF969B1648"
+!else
+ !define APP_ENTRY "WebDAVMount"
+ !define APP_DISPLAY "WebDAVMount"
+ !define PRODUCT_ID "WebDAVMount-8AC56D6F-43A6-4E37-A0D0-36DF969B1648"
+!endif
+Name "${APP_DISPLAY} ${VERSION}"
 OutFile "${OUTPUT}"
-InstallDir "$LOCALAPPDATA\Programs\WebDAVMount"
+InstallDir "$LOCALAPPDATA\Programs\${APP_ENTRY}"
 RequestExecutionLevel user
 SetCompressor zlib
 ShowInstDetails show
 ShowUninstDetails show
-!define PRODUCT_ID "WebDAVMount-8AC56D6F-43A6-4E37-A0D0-36DF969B1648"
 !macro ShortcutPaths
  !ifdef TEST_KEY
   StrCpy $R8 "$INSTDIR\test-shortcuts\start\WebDAVMount.lnk"
   StrCpy $R9 "$INSTDIR\test-shortcuts\WebDAVMount.lnk"
  !else
-  StrCpy $R8 "$SMPROGRAMS\WebDAVMount\WebDAVMount.lnk"
-  StrCpy $R9 "$DESKTOP\WebDAVMount.lnk"
+  StrCpy $R8 "$SMPROGRAMS\${APP_ENTRY}\${APP_DISPLAY}.lnk"
+  StrCpy $R9 "$DESKTOP\${APP_DISPLAY}.lnk"
  !endif
 !macroend
 !ifdef TEST_KEY
  !define REGKEY "Software\WebDAVMount\Tests\${TEST_KEY}"
  !define RUNKEY "Software\WebDAVMount\Tests\${TEST_KEY}-Run"
 !else
- !define REGKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount"
+ !define REGKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ENTRY}"
  !define RUNKEY "Software\Microsoft\Windows\CurrentVersion\Run"
 !endif
 !define MUI_ICON "app.ico"
@@ -105,6 +113,13 @@ FunctionEnd
 
 Function .onInit
  SetShellVarContext current
+ !ifdef ARM64_PACKAGE
+ ${IfNot} ${IsNativeARM64}
+  MessageBox MB_OK "此安装包需要 Windows ARM64。" /SD IDOK
+  SetErrorLevel 2
+  Quit
+ ${EndIf}
+ !endif
  SetRegView 64
  ; Automatic update handoff: capture a process handle, then wait for the
  ; client (and its ordinary Job-contained engine) to release installed files.
@@ -155,11 +170,13 @@ Function .onInit
    Quit
   wait_client_done:
  ${EndIf}
+ !ifndef ARM64_PACKAGE
  ${IfNot} ${RunningX64}
   MessageBox MB_OK "需要 Windows x64。" /SD IDOK
   SetErrorLevel 2
   Quit
  ${EndIf}
+ !endif
  ReadRegStr $0 HKCU "${REGKEY}" "InstallLocation"
  StrCpy $UpgradeMode 0
  ${If} $0 != ""
@@ -249,7 +266,7 @@ Section "程序文件（必选）" Main
    File "Upgrade-Installed.ps1"
   !endif
   ClearErrors
-  # Sysnative selects the x64 Windows PowerShell host from this x86 installer.
+  # Sysnative selects native Windows PowerShell from this x86 installer.
   ExecWait '"$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "$PayloadDirectory\Upgrade-Installed.ps1" -Source "$PayloadDirectory" -Target "$INSTDIR" -Version "${VERSION}" -RegistryKey "${REGKEY}"' $0
   ${If} ${Errors}
    StrCpy $0 7
@@ -272,7 +289,7 @@ Section "程序文件（必选）" Main
   DetailPrint "升级完成，原文件备份保留在安装目录。"
   Goto main_done
  ${EndIf}
- WriteRegStr HKCU "${REGKEY}" "DisplayName" "WebDAVMount"
+ WriteRegStr HKCU "${REGKEY}" "DisplayName" "${APP_DISPLAY}"
  WriteRegStr HKCU "${REGKEY}" "DisplayVersion" "${VERSION}"
  WriteRegStr HKCU "${REGKEY}" "InstallLocation" "$INSTDIR"
  WriteRegStr HKCU "${REGKEY}" "DisplayIcon" "$INSTDIR\WebDAVMount.exe"
@@ -288,17 +305,14 @@ Section "开始菜单快捷方式" StartShortcut
  ${If} $UpgradeMode == 1
   Goto start_done
  ${EndIf}
- !ifdef TEST_KEY
-  StrCpy $0 "$INSTDIR\test-shortcuts\start"
- !else
-  StrCpy $0 "$SMPROGRAMS\WebDAVMount"
- !endif
+ !insertmacro ShortcutPaths
+ ${GetParent} "$R8" $0
  Push "$0"
  Call CheckPath
- IfFileExists "$0\WebDAVMount.lnk" start_done
+ IfFileExists "$R8" start_done
  CreateDirectory "$0"
- CreateShortcut "$0\WebDAVMount.lnk" "$INSTDIR\WebDAVMount.exe" "" "$INSTDIR\WebDAVMount.exe" 0
- WriteRegStr HKCU "${REGKEY}" "StartShortcut" "$0\WebDAVMount.lnk"
+ CreateShortcut "$R8" "$INSTDIR\WebDAVMount.exe" "" "$INSTDIR\WebDAVMount.exe" 0
+ WriteRegStr HKCU "${REGKEY}" "StartShortcut" "$R8"
  start_done:
 SectionEnd
 
@@ -306,17 +320,16 @@ Section /o "桌面快捷方式" DesktopShortcut
  ${If} $UpgradeMode == 1
   Goto desktop_done
  ${EndIf}
+ !insertmacro ShortcutPaths
+ ${GetParent} "$R9" $0
  !ifdef TEST_KEY
-  StrCpy $0 "$INSTDIR\test-shortcuts"
   CreateDirectory "$0"
- !else
-  StrCpy $0 "$DESKTOP"
  !endif
  Push "$0"
  Call CheckPath
- IfFileExists "$0\WebDAVMount.lnk" desktop_done
- CreateShortcut "$0\WebDAVMount.lnk" "$INSTDIR\WebDAVMount.exe" "" "$INSTDIR\WebDAVMount.exe" 0
- WriteRegStr HKCU "${REGKEY}" "DesktopShortcut" "$0\WebDAVMount.lnk"
+ IfFileExists "$R9" desktop_done
+ CreateShortcut "$R9" "$INSTDIR\WebDAVMount.exe" "" "$INSTDIR\WebDAVMount.exe" 0
+ WriteRegStr HKCU "${REGKEY}" "DesktopShortcut" "$R9"
  desktop_done:
 SectionEnd
 
@@ -384,9 +397,9 @@ Section "Uninstall"
  !ifdef TEST_KEY
   RMDir "$INSTDIR\test-shortcuts"
  !endif
- ReadRegStr $0 HKCU "${RUNKEY}" "WebDAVMount"
+ ReadRegStr $0 HKCU "${RUNKEY}" "${APP_ENTRY}"
  StrCmp $0 '$\"$INSTDIR\WebDAVMount.exe$\"' 0 +2
- DeleteRegValue HKCU "${RUNKEY}" "WebDAVMount"
+ DeleteRegValue HKCU "${RUNKEY}" "${APP_ENTRY}"
  Delete "$INSTDIR\WebDAVMount.install"
  Delete "$INSTDIR\uninstall.exe"
  DeleteRegKey HKCU "${REGKEY}"

@@ -5,6 +5,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +13,13 @@ import (
 )
 
 const loginStartupKey = `Software\Microsoft\Windows\CurrentVersion\Run`
-const loginStartupValue = "WebDAVMount"
+
+func loginStartupValue() string {
+	if runtime.GOARCH == "arm64" {
+		return "WebDAVMount-ARM64"
+	}
+	return "WebDAVMount"
+}
 
 type LoginStartupInfo struct {
 	Available      bool   `json:"available"`
@@ -39,7 +46,7 @@ func (r registryLoginStartup) Read() (string, error) {
 		return "", err
 	}
 	defer k.Close()
-	value, _, err := k.GetStringValue(loginStartupValue)
+	value, _, err := k.GetStringValue(loginStartupValue())
 	if errors.Is(err, registry.ErrNotExist) {
 		return "", nil
 	}
@@ -51,7 +58,7 @@ func (r registryLoginStartup) Write(value string) error {
 		return err
 	}
 	defer k.Close()
-	return k.SetStringValue(loginStartupValue, value)
+	return k.SetStringValue(loginStartupValue(), value)
 }
 func (r registryLoginStartup) Delete() error {
 	k, err := registry.OpenKey(registry.CURRENT_USER, r.key, registry.SET_VALUE)
@@ -62,7 +69,7 @@ func (r registryLoginStartup) Delete() error {
 		return err
 	}
 	defer k.Close()
-	err = k.DeleteValue(loginStartupValue)
+	err = k.DeleteValue(loginStartupValue())
 	if errors.Is(err, registry.ErrNotExist) {
 		return nil
 	}

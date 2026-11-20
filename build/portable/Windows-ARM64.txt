@@ -1,0 +1,11 @@
+WebDAVMount · Windows ARM64 便携预览
+
+在 Windows 11 ARM64 上安装 WinFsp 和 Microsoft Edge WebView2 ARM64 Runtime。
+完整解压 ZIP，保留同目录的 WebDAVMount.exe 与 rclone.exe，再打开 WebDAVMount.exe。
+先测试只读挂载、资源管理器读取和卸载。
+
+默认数据目录为 %APPDATA%\WebDAVMount-ARM64。未来的 ARM64 预览请在独立目录中解压使用。
+此版本通过手动方式更新。实际 WinFsp 挂载需要在 Windows ARM64 环境验收。
+
+WinFsp: https://github.com/winfsp/winfsp/releases
+WebView2: https://developer.microsoft.com/microsoft-edge/webview2/

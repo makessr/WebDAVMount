@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/hex"
+	"runtime"
 	"webdavmount/internal/updatefeed"
 )
 
@@ -11,6 +12,10 @@ import (
 const updatePublicKeyHex = "9359795949700eedaf5233968777b4efaccb5c076ed0138c43e776d7813d9303"
 
 func compiledUpdatePolicy() *DesktopUpdatePolicy {
+	// The published Windows feed contains AMD64 installers.
+	if runtime.GOARCH != "amd64" {
+		return nil
+	}
 	publicKey, err := hex.DecodeString(updatePublicKeyHex)
 	if err != nil || len(publicKey) != ed25519.PublicKeySize {
 		return nil

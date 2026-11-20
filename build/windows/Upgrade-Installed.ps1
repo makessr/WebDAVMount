@@ -13,10 +13,16 @@ $env:PSModulePath=$PSHOME+'\Modules'
 $upgradeMutex=$null;$ownsMutex=$false
 try {
     if($Version -notmatch '^\d+\.\d+\.\d+$'){throw 'Invalid release version.'}
-    if($RegistryKey -ne 'Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount' -and
+    if($RegistryKey -notin @('Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount','Software\Microsoft\Windows\CurrentVersion\Uninstall\WebDAVMount-ARM64') -and
        $RegistryKey -notmatch '^Software\\WebDAVMount\\Tests\\Installer-[a-f0-9]{32}$'){throw 'Invalid registration key.'}
     . (Join-Path $Source 'Update-WebDAVMount.ps1')
     $targetRoot=Get-UpgradeRoot $Target
+    if((Get-Command Get-UpgradePEMachine -CommandType Function -ErrorAction SilentlyContinue) -or $RegistryKey.EndsWith('-ARM64')){
+        $sourceRoot=Get-UpgradeRoot $Source
+        $sourceMachine=Get-UpgradePEMachine (Get-UpgradePath $sourceRoot 'WebDAVMount.exe')
+        $targetMachine=Get-UpgradePEMachine (Get-UpgradePath $targetRoot 'WebDAVMount.exe')
+        if($sourceMachine -notin @(0x8664,0xAA64) -or $sourceMachine -ne $targetMachine){throw 'Installed executable architecture does not match the upgrade.'}
+    }
     $hasher=[Security.Cryptography.SHA256]::Create()
     try{$lockName=([BitConverter]::ToString($hasher.ComputeHash([Text.Encoding]::UTF8.GetBytes($targetRoot.ToUpperInvariant())))).Replace('-','')}finally{$hasher.Dispose()}
     $upgradeMutex=[Threading.Mutex]::new($false,('Local\WebDAVMount-Installer-'+$lockName))
