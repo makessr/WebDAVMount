@@ -58,3 +58,13 @@ Linux CI 验证 Debian 包安装、GTK 启动和读取 rclone 配置。Linux 发
 WebDAVMount 自有源码采用 [Apache-2.0](LICENSE)，署名见 [NOTICE](NOTICE)。第三方组件适用各自的[许可和署名](build/portable/THIRD_PARTY_NOTICES.txt)。
 
 项目主页与联系入口见 [SALANGHE](https://www.salanghe.com/)。
+## Windows ARM64 原生验收
+
+Windows ARM64 预览提供独立的原生验收工作流，覆盖公开包校验、WinFsp 只读挂载和从公开预览升级到当前构建。升级会核对 ARM64 安装标记。
+ARM64 验收使用 SHA-256 固定的 NSIS 3.13 构建升级安装包。
+
+ARM64 验收在编译器镜像故障时尝试备用镜像，并校验相同的固定摘要。
+
+ARM64 云端验收为持久化升级操作预留四分钟。
+
+Windows ARM64 原生验收覆盖公开预览安装、真实 WinFsp 只读挂载、原位安装升级和卸载。
