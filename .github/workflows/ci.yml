@@ -93,22 +93,13 @@ jobs:
           smoke_args=()
           if [[ "$TRUSTED_FUSE" == true && "$RUNNER_ENVIRONMENT" == github-hosted ]]; then
             test -c /dev/fuse
-            docker_args=(--device /dev/fuse --cap-add SYS_ADMIN)
+            # Docker's default AppArmor profile denies mount(2).
+            docker_args=(--device /dev/fuse --cap-add SYS_ADMIN --security-opt apparmor=unconfined)
             smoke_args=(--fuse)
-            docker info --format '{{json .SecurityOptions}}'
           fi
-          if docker run --rm "${docker_args[@]}" \
+          docker run --rm "${docker_args[@]}" \
             -v "${RUNNER_TEMP}/debian-bookworm-archives:/var/cache/apt/archives" \
-            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh "${smoke_args[@]}"; then
-            exit 0
-          else
-            status=$?
-          fi
-          if [[ ${#smoke_args[@]} -gt 0 ]]; then
-            sudo journalctl -k --since '-5 minutes' --no-pager |
-              grep -E 'apparmor="DENIED".*(fusermount|fstype="fuse)' || true
-          fi
-          exit "$status"
+            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh "${smoke_args[@]}"
 
   contribution:
     name: Contribution checks
