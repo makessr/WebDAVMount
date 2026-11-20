@@ -24,7 +24,8 @@ def place(stage, relative, *, content=None, source=None, mode=0o644):
 
 def build(output):
     output.mkdir(parents=True, exist_ok=True)
-    artifact = output / f"{PACKAGE}_{VERSION}_all.deb"
+    asset_version = VERSION.replace("~", ".")
+    artifact = output / f"{PACKAGE}_{asset_version}_all.deb"
     with tempfile.TemporaryDirectory(dir=output, prefix=".mountbridge-") as temp:
         stage = Path(temp) / "package"
         place(stage, "DEBIAN/control", content=f"""Package: {PACKAGE}
