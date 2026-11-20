@@ -81,23 +81,13 @@ jobs:
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: ${{ runner.temp }}/debian-bookworm-archives/*.deb
-          key: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('.github/workflows/ci.yml') }}-${{ steps.apt.outputs.week }}
-          restore-keys: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('.github/workflows/ci.yml') }}-
+          key: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('scripts/ci-debian-smoke.sh') }}-${{ steps.apt.outputs.week }}
+          restore-keys: debian-bookworm-archives-${{ runner.arch }}-${{ hashFiles('scripts/ci-debian-smoke.sh') }}-
       - name: Debian package installation and GTK startup
         run: |
           docker run --rm \
             -v "${RUNNER_TEMP}/debian-bookworm-archives:/var/cache/apt/archives" \
-            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim sh -euxc '
-              rm -f /etc/apt/apt.conf.d/docker-clean
-              apt-get update -qq
-              apt-get install -y -qq --no-install-recommends rclone fuse3 python3-gi gir1.2-gtk-3.0 \
-                xfce4-terminal dbus-x11 xvfb xauth thunar desktop-file-utils
-              python3 /source/linux/package.py --output /tmp/preview
-              dpkg -i /tmp/preview/*.deb
-              desktop-file-validate /usr/share/applications/com.salanghe.MountBridge.desktop
-              useradd -m preview
-              runuser -u preview -- dbus-run-session -- xvfb-run -a env NO_AT_BRIDGE=1 python3 /source/linux/smoke_test.py --startup-only
-            '
+            -v "${GITHUB_WORKSPACE}:/source:ro" debian:bookworm-slim bash /source/scripts/ci-debian-smoke.sh
 
   contribution:
     name: Contribution checks
