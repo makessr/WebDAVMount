@@ -25,6 +25,13 @@ Windows x64 多网盘挂载客户端。将 WebDAV、SFTP、FTP、S3 兼容存储
 
 运行时需要相邻的 rclone.exe。发行包附带的引擎及构建说明位于便携包中，精确版本的第三方源码在同一 Releases 版次的依赖源码包中。
 
+## 贡献与发布
+
+欢迎提交 Issue 和 Pull Request。较大改动请先通过 Issue 对齐范围。每次提交同步更新 README，PR 标题和说明使用中文，注明用户可见变化和已执行的验证。
+
+Windows 提交前运行 `bun run check`，Linux 运行 `bun run check:linux`。发行时用 `bun run release:check <标签>` 核对 main 的 CI。详细流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+
 ## 许可
 
 WebDAVMount 自有源码采用 [Apache-2.0](LICENSE)，署名见 [NOTICE](NOTICE)。第三方组件适用各自的[许可和署名](build/portable/THIRD_PARTY_NOTICES.txt)。
