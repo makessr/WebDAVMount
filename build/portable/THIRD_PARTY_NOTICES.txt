@@ -1,0 +1,43 @@
+WebDAVMount development preview
+
+Bundled rclone: https://github.com/rclone/rclone
+This package uses a custom v1.76.0 source build excluding SMB registration and
+guarding delayed mount cleanup by mount-instance identity. The writeback2
+overlay adds conditional WebDAV writeback, and its policy inputs are bundled.
+The custom-build notice and upstream MIT text are preserved in RCLONE-README.txt.
+Exact source, patch and build provenance are recorded in engine-build/.
+
+This desktop program includes Wails, go-webview2, golang.org/x/sys and other
+Go dependencies, and the Vue and Wails browser runtimes. Dependency license
+and notice files from the build inputs are preserved under licenses/.
+
+WinFsp and Microsoft WebView2 are external runtime dependencies, not bundled
+or installed by this package. Their installers and applicable terms are
+provided by their respective projects.
+
+WebDAVMount's own code is licensed under Apache-2.0. See
+licenses/WebDAVMount/LICENSE and NOTICE. Third-party components retain their
+respective licenses and notices.
+
+Scope of the current notice collection:
+Root license/notice files for desktop Go build inputs are copied. New builds
+record frontend bundle modules and retain their package notices, Vue's umbrella
+license, and Vite/Rolldown generated-code notices including third-party texts.
+The frontend inventory is bound to the executable and bundle hashes in
+licenses/frontend-index/NOTICE.json. Historical builds without that receipt
+retain the conservative production-dependency notice set. This
+does not establish that every nested/vendor notice has been collected.
+The selected custom rclone executable contains its own embedded dependencies.
+Exact-version module root and nested notice files are collected under
+licenses/rclone_*/ with their provenance and hashes in
+licenses/rclone-index/NOTICE.json. Packaging verifies the engine hash,
+embedded dependency module checksums, inventory and copied notice hashes.
+These collected texts still require review of terms and attribution
+obligations; preserving them is not a complete legal-compliance review.
+
+Source-access notices and exact-version links for four MPL dependencies
+are provided at
+licenses/rclone-source-access/NOTICE.txt. A local companion source artifact
+includes the exact engine source ZIP and rebuild inputs. Other redistribution
+and attribution clearance remains pending; historical official-engine packages
+retain their earlier unresolved license findings.

@@ -1,0 +1,24 @@
+{
+  "kind": "nosmb",
+  "sourceModule": "github.com/rclone/rclone",
+  "sourceVersion": "v1.76.0",
+  "sourceSum": "h1:Gabl7KmhxyOXyMtFNA/s6wZ3LZ/2x0NP7xZLNEW3Guo=",
+  "sourceZipSHA256": "A816BEFE2CE61320053BC88207ED2CDC1F12C668DF3D037F2F08B5942113D5E9",
+  "originalBackendSHA256": "E059EE8A99FB77E9A7F8DFBE48A3BAF8E2F183C7C81DF53877179193A93DFD35",
+  "backendSHA256": "7FBE8F1054B50D0F1B50F3CA73480129468BDC555CB42271681247245752F605",
+  "modulesSHA256": "966A2E7D66CC43450F9BFA94A51B4E0A5E43DE2914C1751AEDC7053A19DE5F25",
+  "goVersion": "go version go1.27.4 windows/amd64",
+  "goos": "windows",
+  "goarch": "amd64",
+  "goamd64": "v1",
+  "tags": "cmount",
+  "versionSuffix": "webdavmount-nosmb-remount1-proxy2",
+  "externalModules": 231,
+  "excluded": [
+    "github.com/cloudsoda/sddl",
+    "github.com/cloudsoda/go-smb2",
+    "github.com/geoffgarside/ber"
+  ],
+  "originalMountRCSHA256": "480AE43FA672229792F5EEE070FE8CF9D58584D537838ED319514F6FD0092193",
+  "mountRCSHA256": "E34D7578C92B2DC7A833DCC657AA2C1A05F7A3804428B4CE995140D0EB397B59"
+}

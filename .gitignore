@@ -1,0 +1,12 @@
+/bin/
+/tools/
+/testdata/
+*.log
+/frontend/node_modules/
+/frontend/dist/
+/dist/
+
+# Owner-only portable key backups and restored protected records.
+*.wdmkeybackup
+/密钥备份工具/*.key
+/密钥备份工具/*.dpapi
