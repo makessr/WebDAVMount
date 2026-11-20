@@ -51,6 +51,27 @@ function Wait-For([scriptblock]$Condition, [string]$Message) {
     throw $Message
 }
 
+function New-UpgradeSetup([string]$PortableRoot) {
+    $nsis = Get-VerifiedFile 'https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13.zip' 'nsis.zip' 'ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8'
+    Expand-Archive -LiteralPath $nsis -DestinationPath (Join-Path $root 'compiler')
+    $compiler = Join-Path $root 'compiler/nsis-3.13/makensis.exe'
+    $project = Split-Path $PSScriptRoot -Parent
+    $update = Join-Path $PortableRoot 'Update-WebDAVMount.ps1'
+    Copy-Item -LiteralPath (Join-Path $project 'build/portable/Update-WebDAVMount.ps1') -Destination $update
+    $manifest = Join-Path $PortableRoot 'SHA256SUMS.txt'
+    $hash = (Get-FileHash -LiteralPath $update -Algorithm SHA256).Hash.ToLowerInvariant()
+    $lines = @(Get-Content -LiteralPath $manifest)
+    $entry = '^[a-f0-9]{64}  Update-WebDAVMount\.ps1$'
+    if (@($lines | Where-Object { $_ -cmatch $entry }).Count -ne 1) { throw 'Cannot find updater entry in portable manifest.' }
+    $lines = $lines -creplace $entry, "$hash  Update-WebDAVMount.ps1"
+    [IO.File]::WriteAllLines($manifest, $lines, [Text.UTF8Encoding]::new($false))
+    $portable = Join-Path $root 'upgrade-portable.zip'
+    Compress-Archive -LiteralPath $PortableRoot -DestinationPath $portable
+    $output = Join-Path $root 'upgrade-setup.exe'
+    & (Join-Path $PSScriptRoot 'installer.ps1') -Version 0.72.7 -Architecture arm64 -PortableArchive $portable -Compiler $compiler -Output $output | Out-Host
+    return $output
+}
+
 try {
     if (Test-Path -LiteralPath $registry) { throw 'ARM64 is already installed on the test VM.' }
     $setup = Get-VerifiedFile "$release/WebDAVMount-0.72.7-arm64-setup.exe" 'setup.exe' 'dc46f65463b4cfce8343c255bcc051b1ac462860ab807b7307e6f2135b48d496'
@@ -116,11 +137,12 @@ try {
 
     $marker = Join-Path $target 'synthetic-user-file.txt'
     [IO.File]::WriteAllText($marker, 'preserve')
-    Start-CheckedProcess $setup @('/S')
+    $upgradeSetup = New-UpgradeSetup (Split-Path $portable -Parent)
+    Start-CheckedProcess $upgradeSetup @('/S')
     if ([IO.File]::ReadAllText($marker) -cne 'preserve') { throw 'Upgrade changed the extra file.' }
     $afterUpgrade = Get-DependencyReport $exe 'dependencies-upgrade.json'
     if (!$afterUpgrade.ready) { throw 'Dependencies failed after an in-place upgrade.' }
-    $record.checks += 'in-place-reinstall-preserved-extra-file'
+    $record.checks += 'public-preview-upgraded-with-current-source-preserved-extra-file'
 
     $uninstaller = Join-Path $root 'uninstall-runner.exe'
     Copy-Item -LiteralPath (Join-Path $target 'uninstall.exe') -Destination $uninstaller

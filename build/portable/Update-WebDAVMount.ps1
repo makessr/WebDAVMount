@@ -229,7 +229,12 @@ function Invoke-WebDAVMountUpdate {
     }
     $items+=[pscustomobject]@{Name='SHA256SUMS.txt';Hash=$new.ManifestHash;OldHash=$old.ManifestHash}
     if($InstalledPackage){
-        $marker='WebDAVMount-8AC56D6F-43A6-4E37-A0D0-36DF969B1648'
+        $sourceMachine=Get-UpgradePEMachine (Get-UpgradePath $sourceRoot 'WebDAVMount.exe')
+        $marker=if($sourceMachine -eq 0xAA64){
+            'WebDAVMount-ARM64-8AC56D6F-43A6-4E37-A0D0-36DF969B1648'
+        }else{
+            'WebDAVMount-8AC56D6F-43A6-4E37-A0D0-36DF969B1648'
+        }
         foreach($root in @($sourceRoot,$targetRoot)){
             if([IO.File]::ReadAllText((Get-UpgradePath $root 'WebDAVMount.install')) -ne $marker){throw 'Installation marker mismatch.'}
         }

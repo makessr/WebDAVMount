@@ -43,4 +43,4 @@ WebDAVMount 自有源码采用 [Apache-2.0](LICENSE)，署名见 [NOTICE](NOTICE
 项目主页与联系入口见 [SALANGHE](https://www.salanghe.com/)。
 ## Windows ARM64 原生验收
 
-Windows ARM64 预览提供独立的原生验收工作流，覆盖公开包校验、WinFsp 只读挂载和原位重装。
+Windows ARM64 预览提供独立的原生验收工作流，覆盖公开包校验、WinFsp 只读挂载和从公开预览升级到当前构建。升级会核对 ARM64 安装标记。
