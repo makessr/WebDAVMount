@@ -1,5 +1,6 @@
-"""Exercise the installed GTK application and a real read-only WebDAV mount."""
+"""Exercise the installed GTK application, optionally with real FUSE mounts."""
 
+import argparse
 import errno
 import os
 from pathlib import Path
@@ -9,6 +10,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+from unittest.mock import patch
 
 sys.path.insert(0, "/usr/lib/salanghe-mountbridge")
 from app import Application, GLib
@@ -45,13 +47,25 @@ def click(window, label):
     next(widget for text, widget in buttons(window) if text == label).clicked()
 
 
+def click_mount(window):
+    launch = subprocess.Popen
+
+    def spawn(args, **kwargs):
+        if args[:2] == ["/usr/bin/rclone", "mount"]:
+            kwargs["stderr"] = None  # The fixture contains loopback configuration only.
+        return launch(args, **kwargs)
+
+    with patch("mounts.subprocess.Popen", side_effect=spawn):
+        click(window, "挂载")
+
+
 def loopback_port():
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         return probe.getsockname()[1]
 
 
-def main():
+def main(startup_only):
     assert os.getuid() != 0
     with tempfile.TemporaryDirectory(prefix="mountbridge-smoke-") as temp:
         root = Path(temp)
@@ -84,7 +98,14 @@ def main():
             window = app.get_active_window()
             assert window.get_title() == "MountBridge · SALANGHE"
             await_condition(lambda: "挂载" in dict(buttons(window)))
-            click(window, "挂载")
+            if startup_only:
+                assert set(window.remotes) == {"Demo WebDAV", "SFTP"}
+                assert sum(label == "挂载" for label, _ in buttons(window)) == 2
+                window.close()
+                await_condition(lambda: not app.get_windows())
+                print("PASS: GTK startup and real WebDAV/SFTP configuration listing")
+                return
+            click_mount(window)
             await_condition(lambda: "打开目录" in dict(buttons(window)))
             mounted = window.mounts.path("Demo WebDAV")
             assert (mounted / "probe.txt").read_bytes() == b"MountBridge Linux\n"
@@ -97,13 +118,13 @@ def main():
             assert not (remote / "write.txt").exists()
             click(window, "打开目录")
             assert window.status.get_text() == ""
-            click(window, "挂载")
+            click_mount(window)
             await_condition(lambda: set(window.mounts.owned_from_system()) == {"Demo WebDAV", "SFTP"})
             assert (window.mounts.path("SFTP") / "probe.txt").read_bytes() == b"MountBridge Linux\n"
             click(window, "卸载")
             await_condition(lambda: "Demo WebDAV" not in window.mounts.children)
             assert set(window.mounts.owned_from_system()) == {"SFTP"}
-            click(window, "挂载")
+            click_mount(window)
             await_condition(lambda: set(window.mounts.owned_from_system()) == {"Demo WebDAV", "SFTP"})
             await_condition(lambda: not window.mounts.operations)
             window.close()
@@ -123,4 +144,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--startup-only", action="store_true")
+    main(parser.parse_args().startup_only)
